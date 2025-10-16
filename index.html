@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pitágoras Namibe - Sistema de Gestão de Filas</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <style>
+    :root{
+      --primary:#0f766e; /* teal-700 */
+      --primary-600:#0d9488; /* teal-600 */
+      --primary-800:#115e59; /* teal-800 */
+      --bg:#0b1324;
+      --card:#111827; /* gray-900 */
+      --muted:#9ca3af; /* gray-400 */
+      --text:#f3f4f6; /* gray-100 */
+      --accent:#22c55e; /* green-500 */
+      --warn:#f59e0b; /* amber-500 */
+      --danger:#ef4444; /* red-500 */
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Noto Sans,sans-serif;
+      background: linear-gradient(180deg, #0b1324 0%, #090e1a 100%);
+      color: var(--text);
+      overflow-y: auto;
+    }
+    header{
+      position: sticky; top:0; z-index:50;
+      background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(15,23,42,0.85));
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .container{ max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+    .topbar{ display:flex; align-items:center; justify-content: space-between; padding: 14px 0; }
+    .brand{ display:flex; align-items:center; gap:12px; font-weight:700; letter-spacing:.3px; }
+    .brand .logo{
+      width:36px; height:36px; display:grid; place-items:center; border-radius:8px; background: radial-gradient(60% 60% at 50% 30%, var(--primary-600), var(--primary));
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 10px 25px -10px rgba(13,148,136,.5);
+    }
+    .brand span.small{ display:block; font-size:12px; line-height:1; color: var(--muted); font-weight:600; }
+    nav a{ color: var(--text); text-decoration:none; margin-left: 14px; font-weight:600; font-size: 14px; opacity:.9; }
+    nav a.active{ color: var(--accent); }
+
+    main{ padding: 20px 0 80px; }
+
+    .grid{ display:grid; gap:16px; }
+    .grid.cols-2{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.cols-3{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid.cols-4{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+    @media (max-width: 900px){ .grid.cols-4{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 640px){ .grid.cols-3, .grid.cols-2, .grid.cols-4{ grid-template-columns: 1fr; } }
+
+    .card{
+      background: linear-gradient(180deg, rgba(17,24,39,1), rgba(12,17,28,1));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px; padding: 16px;
+      box-shadow: 0 10px 30px -15px rgba(0,0,0,0.6);
+    }
+    .card.hover:hover{ border-color: rgba(34,197,94,0.5); box-shadow: 0 20px 40px -20px rgba(34,197,94,0.25); transform: translateY(-1px); }
+
+    .group-title{ margin: 18px 0 8px; color: var(--muted); font-weight:700; font-size:12px; text-transform: uppercase; letter-spacing: .12em; }
+
+    .action{
+      display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(255,255,255,0.08);
+      padding:10px 14px; border-radius:10px; color:var(--text); text-decoration:none; font-weight:600; cursor:pointer;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    }
+    .action.primary{ background: linear-gradient(180deg, rgba(34,197,94,.15), rgba(34,197,94,.08)); border-color: rgba(34,197,94,.35); }
+    .action.warn{ background: linear-gradient(180deg, rgba(245,158,11,.15), rgba(245,158,11,.08)); border-color: rgba(245,158,11,.35); }
+    .action.danger{ background: linear-gradient(180deg, rgba(239,68,68,.15), rgba(239,68,68,.08)); border-color: rgba(239,68,68,.35); }
+
+    .pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.08); color: var(--muted); font-size:12px; }
+
+    .menu-item{
+      display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; cursor:pointer;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .menu-item:hover{ border-color: rgba(34,197,94,.35); }
+    .menu-icon{ width:36px; height:36px; border-radius:8px; display:grid; place-items:center; background: rgba(34,197,94,.12); color: var(--accent); }
+
+    .section-title{ display:flex; align-items:baseline; justify-content: space-between; gap: 16px; margin: 4px 0 16px; }
+    .section-title h2{ margin:0; font-size: 20px; }
+    .muted{ color: var(--muted); }
+
+    .divider{ height:1px; background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); margin: 12px 0; }
+
+    .stat{ display:flex; flex-direction:column; gap:6px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); }
+    .stat .big{ font-size: 28px; font-weight:800; }
+
+    .qr-wrap{ display:flex; align-items:center; gap:16px; flex-wrap: wrap; }
+    canvas.qr{ border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:#fff; padding:8px; }
+
+    .list{ display:flex; flex-direction:column; gap:8px; }
+    .row{ display:flex; align-items:center; justify-content: space-between; gap:12px; padding:10px 12px; border:1px solid rgba(255,255,255,0.08); border-radius:10px; }
+    .row .left{ display:flex; align-items:center; gap:10px; }
+
+    .inline-form{ display:flex; flex-wrap:wrap; gap:10px; margin: 8px 0; }
+    .inline-form input, .inline-form select{ padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color:var(--text); }
+
+    .table{ width:100%; border-collapse: collapse; }
+    .table th, .table td{ text-align:left; padding:10px; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+    .table th{ color: var(--muted); font-weight:700; font-size:12px; text-transform: uppercase; letter-spacing:.12em; }
+
+    .badge{ padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight:700; }
+    .badge.wait{ background: rgba(245,158,11,.15); color:#fbbf24; border: 1px solid rgba(245,158,11,.35); }
+    .badge.serving{ background: rgba(34,197,94,.15); color:#34d399; border: 1px solid rgba(34,197,94,.35); }
+    .badge.done{ background: rgba(59,130,246,.15); color:#60a5fa; border: 1px solid rgba(59,130,246,.35); }
+    .badge.cancel{ background: rgba(239,68,68,.15); color:#f87171; border: 1px solid rgba(239,68,68,.35); }
+
+    footer{ position: sticky; bottom:0; background: linear-gradient(0deg, rgba(17,24,39,0.95), rgba(15,23,42,0.85)); border-top: 1px solid rgba(255,255,255,0.06); }
+    footer .container{ display:flex; align-items:center; justify-content: space-between; padding: 10px 16px; gap:10px; flex-wrap: wrap; }
+
+    .help{ color: var(--muted); font-size: 13px; }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; padding:2px 6px; border-radius:6px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); }
+
+    .hidden{ display:none !important; }
+    .flex{ display:flex; }
+    .gap-8{ gap:8px; }
+
+    @media print{
+      body{ background:#fff !important; color:#000 !important; }
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area{ position:absolute; left:0; top:0; width:100%; padding:0; margin:0; }
+    }
+    .print-sheet{
+      width: 280px;
+      padding: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
+      color:#000;
+      background:#fff;
+    }
+    .print-center{ text-align:center; }
+    .print-title{ font-weight: 800; font-size: 16px; margin: 4px 0; }
+    .print-big{ font-weight: 900; font-size: 36px; letter-spacing: .06em; }
+    .print-meta{ font-size: 12px; margin: 2px 0; }
+    .print-qr{ margin: 8px auto; display:block; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container topbar">
+      <div class="brand">
+        <div class="logo"><span class="material-icons-outlined">qr_code_2</span></div>
+        <div>
+          <div>Pitágoras Namibe</div>
+          <span class="small">Sistema de Gestão de Filas</span>
+        </div>
+      </div>
+      <nav>
+        <a href="#home" id="nav-home">Início</a>
+        <a href="#ticket" id="nav-ticket">Meu Ticket</a>
+        <a href="#atendimento" id="nav-at">Atendimento</a>
+        <a href="#monitor" id="nav-monitor">Painel</a>
+        <a href="#admin" id="nav-admin">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- HOME / MENU -->
+    <section id="view-home">
+      <div class="section-title">
+        <h2>Escolha o serviço que veio realizar</h2>
+        <div class="pill"><span class="material-icons-outlined" style="font-size:16px;">schedule</span> Tempo estimado em tempo real</div>
+      </div>
+      <div id="menu-root"></div>
+    </section>
+
+    <!-- TICKET VIEW -->
+    <section id="view-ticket" class="hidden">
+      <div class="section-title">
+        <h2>Seu Ticket</h2>
+        <div class="flex gap-8">
+          <button class="action" id="btn-share-ticket"><span class="material-icons-outlined">share</span> Partilhar</button>
+          <button class="action" id="btn-print-ticket"><span class="material-icons-outlined">print</span> Imprimir</button>
+          <button class="action warn" id="btn-cancel-ticket"><span class="material-icons-outlined">close</span> Cancelar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="grid cols-2">
+          <div>
+            <div class="qr-wrap">
+              <canvas id="ticket-qr" class="qr" width="220" height="220"></canvas>
+              <div>
+                <div class="pill" id="ticket-queue-name">Fila</div>
+                <div class="divider"></div>
+                <div class="stat">
+                  <div class="muted">Número do Ticket</div>
+                  <div class="big" id="ticket-number">—</div>
+                </div>
+                <div class="grid cols-2" style="margin-top:8px;">
+                  <div class="stat">
+                    <div class="muted">Posição na fila</div>
+                    <div class="big" id="ticket-position">—</div>
+                  </div>
+                  <div class="stat">
+                    <div class="muted">Tempo estimado</div>
+                    <div class="big" id="ticket-eta">—</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="help">Mostre este QR code no balcão quando for chamado.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="list" id="ticket-updates"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ATENDIMENTO -->
+    <section id="view-atendimento" class="hidden">
+      <div class="section-title">
+        <h2>Ponto de Atendimento</h2>
+        <div class="pill"><span class="material-icons-outlined" style="font-size:16px;">qr_code_scanner</span> Leitor de QR ativo</div>
+      </div>
+
+      <div class="card">
+        <div class="inline-form">
+          <select id="sel-at-queue"></select>
+          <input id="inp-at-agent" placeholder="Atendente (opcional)" />
+          <button class="action primary" id="btn-at-next"><span class="material-icons-outlined">volume_up</span> Chamar próximo</button>
+          <button class="action" id="btn-at-finish"><span class="material-icons-outlined">task_alt</span> Concluir atendimento</button>
+          <button class="action danger" id="btn-at-cancel"><span class="material-icons-outlined">cancel</span> Cancelar ticket</button>
+        </div>
+        <div class="divider"></div>
+        <div class="grid cols-2">
+          <div>
+            <div id="reader" style="width:100%; max-width:420px;"></div>
+            <div class="help">Se a câmara não abrir, use um servidor local (https) ou introduza manualmente o ID:</div>
+            <div class="inline-form">
+              <input id="inp-manual-id" placeholder="ID do Ticket (UUID)" />
+              <button class="action" id="btn-manual-load"><span class="material-icons-outlined">search</span> Carregar</button>
+            </div>
+          </div>
+          <div>
+            <div class="stat">
+              <div class="muted">Em atendimento</div>
+              <div class="big" id="at-current">—</div>
+            </div>
+            <div class="divider"></div>
+            <div class="list" id="at-waiting"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MONITOR -->
+    <section id="view-monitor" class="hidden">
+      <div class="section-title">
+        <h2>Painel de Chamadas</h2>
+        <div class="inline-form">
+          <select id="sel-monitor-queue"></select>
+          <button class="action" id="btn-monitor-refresh"><span class="material-icons-outlined">refresh</span> Atualizar</button>
+        </div>
+      </div>
+      <div class="card" style="padding:24px;">
+        <div style="display:flex; align-items:center; justify-content: space-between; gap:16px; flex-wrap:wrap;">
+          <div>
+            <div class="muted">Agora atendendo</div>
+            <div class="big" id="monitor-now" style="font-size:48px; letter-spacing:.06em;">—</div>
+          </div>
+          <div>
+            <div class="muted">Próximos</div>
+            <div id="monitor-next" style="font-size:24px;">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN LOGIN / AUTH -->
+    <section id="view-admin-login" class="hidden">
+      <div class="section-title">
+        <h2>Autenticação de Administrador</h2>
+      </div>
+      <div class="card" id="auth-card">
+        <div id="auth-setup" class="hidden">
+          <div class="help">Nenhum administrador registado. Crie o primeiro administrador.</div>
+          <div class="inline-form">
+            <input id="auth-setup-user" placeholder="Utilizador" />
+            <input id="auth-setup-pass" type="password" placeholder="Palavra-passe" />
+            <button class="action primary" id="btn-auth-setup"><span class="material-icons-outlined">person_add</span> Criar administrador</button>
+          </div>
+        </div>
+        <div id="auth-login">
+          <div class="help">Introduza as suas credenciais para aceder ao painel.</div>
+          <div class="inline-form">
+            <input id="auth-user" placeholder="Utilizador" />
+            <input id="auth-pass" type="password" placeholder="Palavra-passe" />
+            <button class="action primary" id="btn-auth-login"><span class="material-icons-outlined">login</span> Entrar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="view-admin" class="hidden">
+      <div class="section-title">
+        <h2>Painel de Administração</h2>
+        <div class="flex gap-8">
+          <button class="action" id="btn-export-csv"><span class="material-icons-outlined">download</span> Exportar CSV</button>
+          <button class="action" id="btn-export-json"><span class="material-icons-outlined">data_object</span> Exportar JSON</button>
+          <label class="action" for="input-import-json" style="cursor:pointer;"><span class="material-icons-outlined">upload</span> Importar JSON</label>
+          <input type="file" id="input-import-json" accept="application/json" class="hidden" />
+          <button class="action danger" id="btn-reset-all"><span class="material-icons-outlined">delete</span> Limpar Base</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="inline-form">
+          <input id="inp-queue-name" placeholder="Nome da fila (ex: Pagamentos - Propina)" />
+          <input id="inp-queue-group" placeholder="Grupo (ex: Pagamentos)" />
+          <button class="action primary" id="btn-add-queue"><span class="material-icons-outlined">add</span> Adicionar fila</button>
+        </div>
+      </div>
+
+      <div class="card" id="admin-users-card" style="margin-bottom:16px;">
+        <div class="section-title">
+          <h2>Administradores</h2>
+          <div class="flex gap-8">
+            <span id="auth-current" class="pill"><span class="material-icons-outlined" style="font-size:16px;">person</span> —</span>
+            <button class="action" id="btn-auth-logout"><span class="material-icons-outlined">logout</span> Terminar sessão</button>
+          </div>
+        </div>
+        <div class="inline-form">
+          <input id="inp-admin-user" placeholder="Novo utilizador" />
+          <input id="inp-admin-pass" type="password" placeholder="Palavra-passe" />
+          <button class="action" id="btn-add-admin"><span class="material-icons-outlined">person_add</span> Adicionar administrador</button>
+        </div>
+        <div class="list" id="admin-users-list"></div>
+      </div>
+
+      <div class="card">
+        <table class="table" id="admin-table">
+          <thead>
+            <tr>
+              <th>Fila</th>
+              <th>Grupo</th>
+              <th>Espera</th>
+              <th>Em atendimento</th>
+              <th>Concluídos (hoje)</th>
+              <th>Atend./hora</th>
+              <th>Média (min)</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="help">Sugestão: Para usar a câmara, abra este sistema num servidor local (https) ou via "Live Server" no VS Code. Estimativas usam médias móveis de tempo real.</div>
+      <div class="pill"><span class="material-icons-outlined" style="font-size:16px;">lock</span> Dados guardados localmente no navegador</div>
+    </div>
+  </footer>
+  <div id="print-area" class="hidden"></div>
+
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    // === CORE DATA & STORAGE ===
+    const STORAGE_KEY = 'pitagoras_queue_db_v1';
+    const AUTH_SESSION_KEY = 'pitagoras_admin_session_v1';
+    const DEFAULT_AVG_SEC = 180; // 3 minutos
+
+    const DEFAULT_QUEUES = [
+      { group: 'Pagamentos', items: ['Passe','Propina','Bata','Certificados','Declarações','Faltas','Provas de atraso ou exame','Uniforme social','Beca','Fato do estágio','Outros'] },
+      { group: 'Secretaria', items: ['Administrativa','Pedagógica'] },
+      { group: 'Outros', items: ['Reclamações','Outros serviços'] },
+    ];
+
+    function uid(){ return 't_' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    function now(){ return Date.now(); }
+
+    function loadDB(){
+      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }catch(e){ return null; }
+    }
+    function saveDB(db){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); broadcast(); }
+
+    function emptyDB(){
+      return {
+        createdAt: now(),
+        queues: {}, // id -> queue
+        tickets: {}, // id -> ticket
+        settings: { version: 1, auth: { admins: [] } },
+      };
+    }
+
+    function ensureSeed(){
+      let db = loadDB();
+      if(!db){ db = emptyDB(); }
+      db.settings = db.settings || { version: 1 };
+      db.settings.auth = db.settings.auth || { admins: [] };
+      const hasQueues = Object.keys(db.queues).length > 0;
+      if(!hasQueues){
+        for(const grp of DEFAULT_QUEUES){
+          for(const it of grp.items){
+            createQueue(db, `${grp.group} - ${it}`, grp.group);
+          }
+        }
+        saveDB(db);
+      } else {
+        // ensure fields
+        for(const qid of Object.keys(db.queues)){
+          const q = db.queues[qid];
+          q.avgServiceSec = q.avgServiceSec || DEFAULT_AVG_SEC;
+          q.history = q.history || []; // durations (sec)
+          q.lastNumber = q.lastNumber || 0;
+          q.active = (q.active !== false);
+        }
+        saveDB(db);
+      }
+      return loadDB();
+    }
+
+    function createQueue(db, name, group){
+      const id = 'q_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      if(!db.queues[id]){
+        db.queues[id] = { id, name, group: group || 'Geral', avgServiceSec: DEFAULT_AVG_SEC, history: [], lastNumber: 0, active: true };
+      }
+      return id;
+    }
+
+    function queuesList(db){
+      return Object.values(db.queues).sort((a,b)=> a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+    }
+
+    // === AUTH ===
+    function authAdmins(){ const db = ensureSeed(); return db.settings.auth?.admins || []; }
+    async function hashPassword(pw){
+      try{
+        const enc = new TextEncoder().encode(pw);
+        const buf = await crypto.subtle.digest('SHA-256', enc);
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      }catch(e){
+        let h=0; for(let i=0;i<pw.length;i++){ h=((h<<5)-h)+pw.charCodeAt(i); h|=0; }
+        return 'x'+Math.abs(h).toString(16);
+      }
+    }
+    function authIsLoggedIn(){ try{ return !!sessionStorage.getItem(AUTH_SESSION_KEY); }catch(e){ return false; } }
+    function authCurrentUser(){ try{ return sessionStorage.getItem(AUTH_SESSION_KEY) || ''; }catch(e){ return ''; } }
+    function authSetSession(user){ try{ if(user){ sessionStorage.setItem(AUTH_SESSION_KEY, user); } else { sessionStorage.removeItem(AUTH_SESSION_KEY); } }catch(e){} }
+
+    async function authAddAdmin(username, password){
+      username = String(username||'').trim(); if(!username) throw new Error('Utilizador inválido');
+      password = String(password||''); if(password.length < 4) throw new Error('Palavra-passe muito curta');
+      const db = ensureSeed();
+      const exists = (db.settings.auth.admins||[]).some(u => u.user.toLowerCase() === username.toLowerCase());
+      if(exists) throw new Error('Utilizador já existe');
+      const hash = await hashPassword(password);
+      db.settings.auth.admins = db.settings.auth.admins || [];
+      db.settings.auth.admins.push({ user: username, hash, active: true, createdAt: now() });
+      saveDB(db);
+    }
+
+    async function authLogin(username, password){
+      const db = ensureSeed();
+      const adm = (db.settings.auth.admins||[]).find(u => u.user.toLowerCase() === String(username||'').toLowerCase());
+      if(!adm) throw new Error('Utilizador inexistente');
+      const hash = await hashPassword(password||'');
+      if(adm.hash !== hash || adm.active === false) throw new Error('Credenciais inválidas');
+      authSetSession(adm.user);
+    }
+
+    function authLogout(){ authSetSession(''); }
+
+    // === TICKETS ===
+    function createTicket(queueId, meta){
+      const db = ensureSeed();
+      const q = db.queues[queueId];
+      if(!q) throw new Error('Fila inexistente');
+      q.lastNumber = (q.lastNumber||0) + 1;
+      const id = uid();
+      const t = {
+        id, queueId, number: q.lastNumber, status: 'waiting',
+        createdAt: now(), startedAt: null, finishedAt: null,
+        person: meta?.person || null, notes: meta?.notes || null,
+        updates: [{ts: now(), msg: 'Ticket criado'}],
+      };
+      db.tickets[id] = t;
+      saveDB(db);
+      return t;
+    }
+
+    function getQueueTickets(db, queueId){
+      return Object.values(db.tickets).filter(t => t.queueId === queueId);
+    }
+
+    function ticketsByStatus(db, queueId, status){
+      return getQueueTickets(db, queueId).filter(t => t.status === status).sort((a,b)=> a.createdAt - b.createdAt);
+    }
+
+    function ticketPosition(db, ticket){
+      const waiting = ticketsByStatus(db, ticket.queueId, 'waiting');
+      const ahead = waiting.filter(t => t.createdAt < ticket.createdAt);
+      return ahead.length + 1; // 1-based including self
+    }
+
+    function queueAvgSec(db, queueId){
+      const q = db.queues[queueId];
+      return Math.max(30, Math.min(1200, q.avgServiceSec || DEFAULT_AVG_SEC));
+    }
+
+    function estimateTicketWaitSec(db, ticket){
+      const pos = ticketPosition(db, ticket); // including self
+      const avg = queueAvgSec(db, ticket.queueId);
+      const serving = ticketsByStatus(db, ticket.queueId, 'serving').length; // add partial slot
+      const totalAhead = Math.max(0, pos - 1) + (serving > 0 ? 0.5 : 0);
+      return Math.round(totalAhead * avg);
+    }
+
+    function formatDuration(sec){
+      if(!isFinite(sec) || sec < 0) sec = 0;
+      const m = Math.floor(sec/60);
+      const s = sec%60;
+      if(m === 0) return s + 's';
+      if(m < 60) return m + 'm ' + s + 's';
+      const h = Math.floor(m/60); const rm = m%60;
+      return h + 'h ' + rm + 'm';
+    }
+
+    function updateTicketStatus(id, status){
+      const db = ensureSeed();
+      const t = db.tickets[id]; if(!t) return;
+      if(status === 'serving'){ t.startedAt = t.startedAt || now(); }
+      if(status === 'done' || status === 'cancel'){
+        if(status === 'done'){
+          t.finishedAt = now();
+          if(t.startedAt){
+            const dur = Math.max(10, Math.round((t.finishedAt - t.startedAt)/1000));
+            const q = db.queues[t.queueId];
+            q.history.push(dur);
+            // keep last 50
+            if(q.history.length > 50) q.history = q.history.slice(-50);
+            // EMA update
+            const prev = q.avgServiceSec || DEFAULT_AVG_SEC;
+            q.avgServiceSec = Math.round(prev*0.7 + dur*0.3);
+          }
+        }
+      }
+      t.status = status;
+      t.updates.push({ts: now(), msg: 'Status: ' + status});
+      saveDB(db);
+    }
+
+    function nextTicket(queueId){
+      const db = ensureSeed();
+      // if there is one serving, finish it first? We keep current serving until finished
+      const serving = ticketsByStatus(db, queueId, 'serving');
+      if(serving.length>0) return serving[0];
+      const waiting = ticketsByStatus(db, queueId, 'waiting');
+      if(waiting.length===0) return null;
+      const nxt = waiting[0];
+      updateTicketStatus(nxt.id, 'serving');
+      return ensureSeed().tickets[nxt.id];
+    }
+
+    function currentServing(queueId){
+      const db = ensureSeed();
+      const serving = ticketsByStatus(db, queueId, 'serving');
+      return serving[0] || null;
+    }
+
+    // === BROADCAST CHANGES ACROSS TABS ===
+    function broadcast(){ localStorage.setItem('pitagoras_queue_ping', String(now())); }
+    window.addEventListener('storage', (ev)=>{
+      if(ev.key === STORAGE_KEY || ev.key === 'pitagoras_queue_ping'){
+        // refresh views
+        renderAll();
+      }
+    });
+
+    // === ROUTER ===
+    function route(){
+      const hash = location.hash || '#home';
+      const [path, param] = hash.replace('#','').split('/');
+      // nav active
+      for(const id of ['nav-home','nav-ticket','nav-at','nav-admin','nav-monitor']){ document.getElementById(id).classList.remove('active'); }
+      if(path==='home') document.getElementById('nav-home').classList.add('active');
+      if(path==='ticket') document.getElementById('nav-ticket').classList.add('active');
+      if(path==='atendimento') document.getElementById('nav-at').classList.add('active');
+      if(path==='admin') document.getElementById('nav-admin').classList.add('active');
+      if(path==='monitor') document.getElementById('nav-monitor').classList.add('active');
+
+      // views
+      show('view-home', path==='home');
+      show('view-ticket', path==='ticket');
+      show('view-atendimento', path==='atendimento');
+      show('view-monitor', path==='monitor');
+      // admin gate
+      const isAdmin = authIsLoggedIn();
+      show('view-admin', path==='admin' && isAdmin);
+      show('view-admin-login', path==='admin' && !isAdmin);
+
+      if(path==='home') renderMenu();
+      if(path==='ticket') renderTicket(param || lastTicketId());
+      if(path==='atendimento') initAtendimento();
+      if(path==='admin') { if(isAdmin) renderAdmin(); else renderAdminLogin(); }
+      if(path==='monitor') renderMonitor();
+    }
+
+    function show(id, vis){ document.getElementById(id).classList.toggle('hidden', !vis); }
+
+    function renderAll(){
+      const hash = location.hash || '#home';
+      if(hash.startsWith('#home')) renderMenu();
+      if(hash.startsWith('#ticket')) renderTicket(hash.split('/')[1] || lastTicketId());
+      if(hash.startsWith('#atendimento')) renderAtendimentoLists();
+      if(hash.startsWith('#admin')) { if(authIsLoggedIn()) renderAdmin(); else renderAdminLogin(); }
+      if(hash.startsWith('#monitor')) renderMonitor();
+    }
+
+    // === MENU (HOME) ===
+    function renderMenu(){
+      const db = ensureSeed();
+      const byGroup = {};
+      for(const q of queuesList(db)){
+        if(!q.active) continue;
+        byGroup[q.group] = byGroup[q.group] || [];
+        byGroup[q.group].push(q);
+      }
+      const root = document.getElementById('menu-root');
+      root.innerHTML = '';
+      for(const group of Object.keys(byGroup)){
+        const gEl = document.createElement('div');
+        const title = document.createElement('div'); title.className='group-title'; title.textContent = group;
+        const grid = document.createElement('div'); grid.className='grid cols-3';
+        for(const q of byGroup[group]){
+          const item = document.createElement('div'); item.className='menu-item'; item.title = 'Criar ticket para ' + q.name;
+          const icon = document.createElement('div'); icon.className='menu-icon'; icon.innerHTML = '<span class="material-icons-outlined">confirmation_number</span>';
+          const txt = document.createElement('div'); txt.innerHTML = '<div style="font-weight:700;">' + q.name + '</div>' + '<div class="muted" style="font-size:12px;">Média: ' + Math.round((q.avgServiceSec||DEFAULT_AVG_SEC)/60) + ' min</div>';
+          item.appendChild(icon); item.appendChild(txt);
+          item.addEventListener('click', async ()=>{
+            const person = prompt('Nome (opcional):');
+            const notes = prompt('Observações (opcional):');
+            const t = createTicket(q.id, { person, notes });
+            try{ sessionStorage.setItem('auto_print_ticket','1'); }catch(e){}
+            location.hash = '#ticket/' + t.id;
+          });
+          grid.appendChild(item);
+        }
+        gEl.appendChild(title); gEl.appendChild(grid); root.appendChild(gEl);
+      }
+    }
+
+    // === TICKET VIEW ===
+    function lastTicketId(){
+      try{
+        return sessionStorage.getItem('last_ticket_id') || localStorage.getItem('last_ticket_id') || '';
+      }catch(e){
+        try{ return localStorage.getItem('last_ticket_id') || ''; }catch(e2){ return ''; }
+      }
+    }
+    function setLastTicketId(id){
+      try{ sessionStorage.setItem('last_ticket_id', id); }catch(e){}
+      try{ localStorage.setItem('last_ticket_id', id); }catch(e){}
+    }
+
+    let ticketTimer = null;
+    async function renderTicket(id){
+      const qrCanvas = document.getElementById('ticket-qr');
+      const elQueue = document.getElementById('ticket-queue-name');
+      const elNumber = document.getElementById('ticket-number');
+      const elPos = document.getElementById('ticket-position');
+      const elEta = document.getElementById('ticket-eta');
+      const elUpdates = document.getElementById('ticket-updates');
+
+      const db = ensureSeed();
+      const t = db.tickets[id];
+      if(!t){
+        // Não destruir o layout quando não existir ticket; apenas apresentar mensagem e limpar dados
+        elQueue.textContent = '—';
+        elNumber.textContent = '—';
+        elPos.textContent = '—';
+        elEta.textContent = '—';
+        elUpdates.innerHTML = '<div class="help">Nenhum ticket selecionado. Crie um no Início.</div>';
+        try{
+          if(qrCanvas && qrCanvas.getContext){
+            const ctx = qrCanvas.getContext('2d');
+            ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+          }
+        }catch(e){}
+        return;
+      }
+      setLastTicketId(id);
+
+      const q = db.queues[t.queueId];
+      elQueue.textContent = q.name;
+      elNumber.textContent = q.group?.startsWith('Pagamentos') ? 'P-' + String(t.number).padStart(3,'0') : String(t.number).padStart(3,'0');
+
+      // QR payload
+      const payload = JSON.stringify({ v:1, t: t.id, q: t.queueId });
+      try{ await QRCode.toCanvas(qrCanvas, payload, { width: 220 }); }catch(e){ console.error(e); }
+
+      const updateStats = ()=>{
+        const db2 = ensureSeed();
+        const t2 = db2.tickets[id]; if(!t2) return;
+        const pos = t2.status==='waiting' ? ticketPosition(db2, t2) : (t2.status==='serving'?0:0);
+        const eta = t2.status==='waiting' ? estimateTicketWaitSec(db2, t2) : 0;
+        elPos.textContent = t2.status==='waiting' ? pos : (t2.status==='serving'?'0 (em atendimento)':'—');
+        elEta.textContent = t2.status==='waiting' ? formatDuration(eta) : (t2.status==='serving'?'Agora':'Concluído');
+
+        // updates list
+        elUpdates.innerHTML = '';
+        for(const u of t2.updates.slice().reverse()){
+          const row = document.createElement('div'); row.className='row';
+          const left = document.createElement('div'); left.className='left';
+          left.innerHTML = '<span class="material-icons-outlined">history</span>' + '<div>' + new Date(u.ts).toLocaleString() + '</div>';
+          const st = document.createElement('div');
+          const badge = document.createElement('span'); badge.className='badge ' + (t2.status==='waiting'?'wait':t2.status==='serving'?'serving':t2.status==='done'?'done':'cancel'); badge.textContent = t2.status.toUpperCase();
+          st.appendChild(badge);
+          row.appendChild(left); row.appendChild(st); elUpdates.appendChild(row);
+        }
+      };
+
+      clearInterval(ticketTimer); updateStats();
+      ticketTimer = setInterval(updateStats, 3000);
+
+      // actions
+      document.getElementById('btn-share-ticket').onclick = async ()=>{
+        const url = location.origin + location.pathname + '#ticket/' + id;
+        try{
+          if(navigator.share){ await navigator.share({ title:'Ticket - ' + q.name, text:'Acompanhe o seu ticket', url }); }
+          else { await navigator.clipboard.writeText(url); alert('Ligação copiada: ' + url); }
+        }catch(e){ console.warn(e); }
+      };
+      const btnPrint = document.getElementById('btn-print-ticket');
+      if(btnPrint){ btnPrint.onclick = ()=>{ printTicket(id); }; }
+      document.getElementById('btn-cancel-ticket').onclick = ()=>{
+        if(confirm('Cancelar este ticket?')){ updateTicketStatus(id, 'cancel'); renderTicket(id); }
+      };
+      try{ if(sessionStorage.getItem('auto_print_ticket')==='1'){ sessionStorage.removeItem('auto_print_ticket'); setTimeout(()=>printTicket(id), 300); } }catch(e){}
+    }
+
+    // === ATENDIMENTO VIEW ===
+    let qrScanner = null;
+    function initAtendimento(){
+      const db = ensureSeed();
+      const sel = document.getElementById('sel-at-queue');
+      sel.innerHTML = '';
+      for(const q of queuesList(db)){
+        const opt = document.createElement('option'); opt.value=q.id; opt.textContent = q.name; sel.appendChild(opt);
+      }
+      sel.onchange = renderAtendimentoLists;
+      renderAtendimentoLists();
+
+      // scanner
+      startScanner();
+
+      document.getElementById('btn-at-next').onclick = ()=>{
+        const qid = sel.value; const t = nextTicket(qid); renderAtendimentoLists(); announce(t);
+      };
+      document.getElementById('btn-at-finish').onclick = ()=>{
+        const cur = currentServing(sel.value); if(cur){ updateTicketStatus(cur.id, 'done'); renderAtendimentoLists(); }
+      };
+      document.getElementById('btn-at-cancel').onclick = ()=>{
+        const cur = currentServing(sel.value); if(cur){ if(confirm('Cancelar ticket atual?')){ updateTicketStatus(cur.id, 'cancel'); renderAtendimentoLists(); } }
+      };
+      document.getElementById('btn-manual-load').onclick = ()=>{
+        const id = document.getElementById('inp-manual-id').value.trim();
+        const db2 = ensureSeed(); const t = db2.tickets[id]; if(!t){ alert('Ticket não encontrado'); return; }
+        handleScanTicket(t);
+      };
+    }
+
+    function startScanner(){
+      try{
+        const scanner = new Html5QrcodeScanner('reader', { fps: 8, qrbox: {width: 220, height: 220}, rememberLastUsedCamera: true });
+        scanner.render((text)=>{
+          try{
+            let payload=null;
+            try{ payload = JSON.parse(text); }catch(e){ /* ignore */ }
+            if(payload && payload.t && payload.q){
+              const db = ensureSeed(); const t = db.tickets[payload.t]; if(t){ handleScanTicket(t); }
+            } else {
+              // try legacy format
+              const m = String(text).match(/^PITFILA\|(t_[a-z0-9]+)\|(q_[a-z0-9\-]+)\|v1$/i);
+              if(m){ const db = ensureSeed(); const t = db.tickets[m[1]]; if(t){ handleScanTicket(t); } }
+            }
+          }catch(e){ console.warn('scan error', e); }
+        }, (err)=>{ /* ignore */ });
+        qrScanner = scanner;
+      }catch(e){ console.warn('No camera context (likely file://). Use localhost/https.', e); }
+    }
+
+    function handleScanTicket(t){
+      const sel = document.getElementById('sel-at-queue');
+      if(sel.value !== t.queueId){ sel.value = t.queueId; }
+      // put into serving if waiting
+      if(t.status === 'waiting') updateTicketStatus(t.id, 'serving');
+      renderAtendimentoLists();
+      announce(t);
+    }
+
+    function renderAtendimentoLists(){
+      const sel = document.getElementById('sel-at-queue');
+      const qid = sel.value; if(!qid) return;
+      const db = ensureSeed();
+      const cur = currentServing(qid);
+      document.getElementById('at-current').textContent = cur ? ticketLabel(cur) : '—';
+      const waiting = ticketsByStatus(db, qid, 'waiting');
+      const list = document.getElementById('at-waiting'); list.innerHTML = '';
+      for(const t of waiting.slice(0, 15)){
+        const row = document.createElement('div'); row.className='row';
+        const left = document.createElement('div'); left.className='left';
+        left.innerHTML = '<span class="material-icons-outlined">person</span>' + '<div>' + ticketLabel(t) + '</div>';
+        const right = document.createElement('div');
+        const btn = document.createElement('button'); btn.className='action'; btn.innerHTML = '<span class="material-icons-outlined">call</span> Chamar';
+        btn.onclick = ()=>{ updateTicketStatus(t.id, 'serving'); renderAtendimentoLists(); announce(t); };
+        right.appendChild(btn);
+        row.appendChild(left); row.appendChild(right); list.appendChild(row);
+      }
+    }
+
+    function ticketLabel(t){
+      const db = ensureSeed(); const q = db.queues[t.queueId];
+      const prefix = q.group?.startsWith('Pagamentos') ? 'P-' : '';
+      return prefix + String(t.number).padStart(3,'0');
+    }
+
+    function announce(t){
+      if(!t) { playBeep(); return; }
+      const db = ensureSeed(); const q = db.queues[t.queueId];
+      const msg = 'Ticket ' + ticketLabel(t) + ', ' + q.name + ', dirija-se ao balcão.';
+      try{ const utter = new SpeechSynthesisUtterance(msg); utter.lang = 'pt-PT'; speechSynthesis.speak(utter); }catch(e){ /* ignore */ }
+      playBeep();
+      // update monitor now
+      setTimeout(renderMonitor, 300);
+    }
+
+    function playBeep(){
+      try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type='triangle'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime+0.02); o.start(); o.stop(ctx.currentTime+0.15);
+      }catch(e){ /* ignore */ }
+    }
+
+    // === MONITOR ===
+    function renderMonitor(){
+      const db = ensureSeed();
+      const sel = document.getElementById('sel-monitor-queue');
+      if(sel.options.length===0){
+        for(const q of queuesList(db)){
+          const opt = document.createElement('option'); opt.value=q.id; opt.textContent = q.name; sel.appendChild(opt);
+        }
+      }
+      const qid = sel.value || (queuesList(db)[0]?.id||''); if(!qid) return;
+      const nowEl = document.getElementById('monitor-now');
+      const nextEl = document.getElementById('monitor-next');
+      const cur = currentServing(qid);
+      nowEl.textContent = cur ? ticketLabel(cur) : '—';
+      const waiting = ticketsByStatus(db, qid, 'waiting').slice(0,5).map(ticketLabel);
+      nextEl.textContent = waiting.length? waiting.join('  ·  ') : '—';
+      document.getElementById('btn-monitor-refresh').onclick = ()=> renderMonitor();
+    }
+
+    // === ADMIN LOGIN RENDER ===
+    function renderAdminLogin(){
+      const admins = authAdmins();
+      const hasAdmins = (admins && admins.length>0);
+      const setup = document.getElementById('auth-setup');
+      const login = document.getElementById('auth-login');
+      if(setup && login){
+        setup.classList.toggle('hidden', hasAdmins);
+        login.classList.toggle('hidden', !hasAdmins);
+      }
+      const btnSetup = document.getElementById('btn-auth-setup');
+      if(btnSetup){
+        btnSetup.onclick = async()=>{
+          const u = document.getElementById('auth-setup-user').value.trim();
+          const p = document.getElementById('auth-setup-pass').value;
+          try{
+            await authAddAdmin(u, p);
+            await authLogin(u, p);
+            location.hash = '#admin';
+          }catch(e){ alert(e.message||String(e)); }
+        };
+      }
+      const btnLogin = document.getElementById('btn-auth-login');
+      if(btnLogin){
+        btnLogin.onclick = async()=>{
+          const u = document.getElementById('auth-user').value.trim();
+          const p = document.getElementById('auth-pass').value;
+          try{
+            await authLogin(u, p);
+            location.hash = '#admin';
+          }catch(e){ alert(e.message||'Falha no login'); }
+        };
+      }
+    }
+
+    // === ADMIN ===
+    function renderAdmin(){
+      const db = ensureSeed();
+      // Header actions
+      document.getElementById('btn-export-csv').onclick = exportCSV;
+      document.getElementById('btn-export-json').onclick = exportJSON;
+      const inputImport = document.getElementById('input-import-json');
+      inputImport.onchange = async (ev)=>{
+        const f = inputImport.files && inputImport.files[0]; if(!f) return;
+        try{
+          const txt = await f.text();
+          const data = JSON.parse(txt);
+          if(!data || typeof data !== 'object' || !data.queues || !data.tickets || !data.settings) throw new Error('Ficheiro inválido');
+          if(confirm('Substituir a base de dados atual por este backup?')){
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            broadcast();
+            renderAll();
+          }
+        }catch(e){ alert('Erro a importar JSON: ' + (e.message||e)); }
+        inputImport.value='';
+      };
+
+      document.getElementById('btn-reset-all').onclick = ()=>{
+        if(confirm('Isto irá limpar todas as filas e tickets. Continuar?')){ localStorage.removeItem(STORAGE_KEY); ensureSeed(); renderAll(); }
+      };
+
+      // Admin users block
+      const curUser = authCurrentUser();
+      const curEl = document.getElementById('auth-current'); if(curEl) curEl.innerHTML = '<span class="material-icons-outlined" style="font-size:16px;">person</span> ' + (curUser||'—');
+      const btnLogout = document.getElementById('btn-auth-logout');
+      if(btnLogout){ btnLogout.onclick = ()=>{ authLogout(); location.hash = '#admin'; }; }
+      const usersListEl = document.getElementById('admin-users-list');
+      if(usersListEl){
+        usersListEl.innerHTML = '';
+        const admins = authAdmins();
+        if(!admins || admins.length===0){ usersListEl.innerHTML = '<div class="help">Sem administradores. Use o formulário acima para adicionar.</div>'; }
+        else{
+          for(const u of admins){
+            const row = document.createElement('div'); row.className = 'row';
+            const left = document.createElement('div'); left.className='left';
+            left.innerHTML = '<span class="material-icons-outlined">admin_panel_settings</span><div>'+u.user+'</div>';
+            const right = document.createElement('div');
+            const btnRemove = document.createElement('button'); btnRemove.className='action danger'; btnRemove.innerHTML = '<span class="material-icons-outlined">person_remove</span> Remover';
+            btnRemove.onclick = ()=>{
+              const db2 = ensureSeed();
+              const arr = db2.settings.auth.admins || [];
+              const idx = arr.findIndex(x=>x.user===u.user);
+              if(idx>=0){
+                if(arr.length<=1 && !confirm('Remover o último administrador? Perderá acesso até criar um novo.')) return;
+                arr.splice(idx,1); saveDB(db2);
+                if(u.user===authCurrentUser()){ authLogout(); location.hash = '#admin'; return; }
+                renderAdmin();
+              }
+            };
+            right.appendChild(btnRemove);
+            row.appendChild(left); row.appendChild(right); usersListEl.appendChild(row);
+          }
+        }
+      }
+      const btnAddAdmin = document.getElementById('btn-add-admin');
+      if(btnAddAdmin){
+        btnAddAdmin.onclick = async()=>{
+          const u = document.getElementById('inp-admin-user').value.trim();
+          const p = document.getElementById('inp-admin-pass').value;
+          try{ await authAddAdmin(u, p); document.getElementById('inp-admin-user').value=''; document.getElementById('inp-admin-pass').value=''; renderAdmin(); }
+          catch(e){ alert(e.message||String(e)); }
+        };
+      }
+
+      // Queues table
+      const tbody = document.querySelector('#admin-table tbody');
+      tbody.innerHTML = '';
+      for(const q of queuesList(db)){
+        const waiting = ticketsByStatus(db, q.id, 'waiting').length;
+        const serving = ticketsByStatus(db, q.id, 'serving').length;
+        const doneToday = getQueueTickets(db, q.id).filter(t => t.status==='done' && isToday(t.finishedAt)).length;
+        const throughput = Math.round((3600 / Math.max(60, q.avgServiceSec)) * 10) / 10; // aprox
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${q.name}</td>
+          <td>${q.group}</td>
+          <td>${waiting}</td>
+          <td>${serving}</td>
+          <td>${doneToday}</td>
+          <td>${throughput}</td>
+          <td>${Math.round(q.avgServiceSec/60)}</td>
+          <td>
+            <button class="action" data-act="toggle" data-id="${q.id}">${q.active? 'Desativar':'Ativar'}</button>
+            <button class="action" data-act="edit" data-id="${q.id}"><span class="material-icons-outlined">edit</span> Editar</button>
+            <button class="action" data-act="resetavg" data-id="${q.id}"><span class="material-icons-outlined">restart_alt</span> Reset média</button>
+            <button class="action danger" data-act="purge" data-id="${q.id}">Limpar</button>
+            <button class="action danger" data-act="delete" data-id="${q.id}"><span class="material-icons-outlined">delete_forever</span> Apagar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      tbody.querySelectorAll('button[data-act="toggle"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-id'); const db2 = ensureSeed(); db2.queues[id].active = !db2.queues[id].active; saveDB(db2); renderAdmin();
+        };
+      });
+      tbody.querySelectorAll('button[data-act="purge"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-id');
+          if(confirm('Apagar tickets (todas as situações) desta fila?')){
+            const db2 = ensureSeed();
+            for(const tid of Object.keys(db2.tickets)) if(db2.tickets[tid].queueId===id) delete db2.tickets[tid];
+            saveDB(db2); renderAdmin();
+          }
+        };
+      });
+      tbody.querySelectorAll('button[data-act="edit"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-id'); const db2 = ensureSeed(); const q = db2.queues[id];
+          const newName = prompt('Novo nome da fila:', q.name);
+          if(!newName) return;
+          const newGroup = prompt('Novo grupo:', q.group) || q.group;
+          q.name = newName.trim(); q.group = newGroup.trim(); saveDB(db2); renderAdmin(); renderMenu();
+        };
+      });
+      tbody.querySelectorAll('button[data-act="resetavg"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-id'); const db2 = ensureSeed(); const q = db2.queues[id];
+          q.history = []; q.avgServiceSec = DEFAULT_AVG_SEC; saveDB(db2); renderAdmin();
+        };
+      });
+      tbody.querySelectorAll('button[data-act="delete"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-id'); if(!confirm('Apagar completamente esta fila e os seus tickets?')) return;
+          const db2 = ensureSeed();
+          for(const tid of Object.keys(db2.tickets)) if(db2.tickets[tid].queueId===id) delete db2.tickets[tid];
+          delete db2.queues[id];
+          saveDB(db2); renderAdmin(); renderMenu();
+        };
+      });
+
+      document.getElementById('btn-add-queue').onclick = ()=>{
+        const name = document.getElementById('inp-queue-name').value.trim();
+        const group = document.getElementById('inp-queue-group').value.trim() || 'Geral';
+        if(!name) return alert('Indique o nome da fila');
+        const db2 = ensureSeed(); createQueue(db2, name, group); saveDB(db2); document.getElementById('inp-queue-name').value=''; renderAdmin(); renderMenu();
+      };
+    }
+
+    function isToday(ts){ if(!ts) return false; const d=new Date(ts), n=new Date(); return d.toDateString()===n.toDateString(); }
+
+    function exportCSV(){
+      const db = ensureSeed();
+      const rows = [['id','queue','number','status','createdAt','startedAt','finishedAt','person','notes']];
+      for(const t of Object.values(db.tickets)){
+        const q = db.queues[t.queueId];
+        rows.push([
+          t.id, q.name, t.number, t.status,
+          new Date(t.createdAt).toISOString(),
+          t.startedAt?new Date(t.startedAt).toISOString():'',
+          t.finishedAt?new Date(t.finishedAt).toISOString():'',
+          t.person||'', t.notes||''
+        ]);
+      }
+      const csv = rows.map(r => r.map(x => '"' + String(x).replace(/"/g,'""') + '"').join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'relatorio_filas.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportJSON(){
+      const db = ensureSeed();
+      const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'backup_filas.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+
+    // === PRINT SUPPORT ===
+    async function buildPrintTicket(id){
+      const db = ensureSeed();
+      const t = db.tickets[id]; if(!t){ alert('Ticket não encontrado'); return false; }
+      const q = db.queues[t.queueId];
+      const area = document.getElementById('print-area');
+      if(!area) return false;
+      const num = ticketLabel(t);
+      const when = new Date().toLocaleString();
+      const payload = JSON.stringify({ v:1, t: t.id, q: t.queueId });
+      area.innerHTML = `
+        <div class="print-sheet">
+          <div class="print-center">
+            <div class="print-title">Pitágoras Namibe</div>
+            <div class="print-meta">Sistema de Gestão de Filas</div>
+            <div class="print-meta">${when}</div>
+            <div class="print-meta">${q.name}</div>
+            <div class="print-big">${num}</div>
+            <canvas id="print-qr" class="print-qr" width="160" height="160"></canvas>
+            <div class="print-meta">ID: ${t.id}</div>
+          </div>
+        </div>`;
+      area.classList.remove('hidden');
+      try{
+        const canvas = document.getElementById('print-qr');
+        await QRCode.toCanvas(canvas, payload, { width: 160 });
+      }catch(e){ console.warn('QR print build error', e); }
+      return true;
+    }
+
+    async function printTicket(id){
+      try{
+        const ok = await buildPrintTicket(id);
+        if(ok){ window.print(); }
+        setTimeout(()=>{ const area = document.getElementById('print-area'); if(area){ area.classList.add('hidden'); area.innerHTML=''; } }, 500);
+      }catch(e){ console.warn('print error', e); }
+    }
+
+    // === INIT ===
+    ensureSeed();
+    window.addEventListener('hashchange', route);
+    route();
+
+    // === API ADAPTER (Laravel) ===
+    (async function(){
+      const API_BASE = localStorage.getItem('api_base') || '/api';
+      let USE_API = false;
+      let queuesCache = [];
+
+      async function apiFetch(path, opts){
+        const res = await fetch(API_BASE + path, Object.assign({ headers:{'Content-Type':'application/json'} }, opts||{}));
+        if(!res.ok){ let msg = (await res.text()).slice(0,500); throw new Error('API '+path+' falhou: ' + res.status + ' ' + msg); }
+        try{ return await res.json(); }catch(e){ return {}; }
+      }
+      const API = {
+        health: ()=> apiFetch('/health'),
+        queues: ()=> apiFetch('/queues'),
+        createTicket: (queue_id, person, notes, ext_id)=> apiFetch('/tickets', { method:'POST', body: JSON.stringify({ queue_id, person, notes, ext_id }) }),
+        getTicket: (extId)=> apiFetch('/tickets/' + encodeURIComponent(extId)),
+        updateStatus: (extId, status)=> apiFetch('/tickets/' + encodeURIComponent(extId) + '/status', { method:'POST', body: JSON.stringify({ status }) }),
+        next: (queueId)=> apiFetch('/queues/' + queueId + '/next', { method:'POST' }),
+        current: (queueId)=> apiFetch('/queues/' + queueId + '/current'),
+        waiting: (queueId, limit)=> apiFetch('/queues/' + queueId + '/waiting?limit=' + (limit||15)),
+        monitor: (queueId)=> apiFetch('/monitor/' + queueId),
+      };
+
+      // Ping API
+      try{ const h = await API.health(); USE_API = !!h && h.ok !== false; }catch(e){ USE_API = false; }
+      if(!USE_API){ return; }
+
+      // cache queues for labels
+      async function loadQueues(){ const q = await API.queues(); queuesCache = Array.isArray(q.queues)? q.queues: []; }
+      function queueById(id){ return queuesCache.find(q=> String(q.id)===String(id)); }
+      function labelForNumber(queueId, number){ const q = queueById(queueId); const prefix = q && String(q.group_name||'').startsWith('Pagamentos') ? 'P-' : ''; return prefix + String(number).padStart(3,'0'); }
+
+      // Keep originals for fallback
+      const _renderMenu = window.renderMenu;
+      const _renderTicket = window.renderTicket;
+      const _initAtendimento = window.initAtendimento;
+      const _renderAtendimentoLists = window.renderAtendimentoLists;
+      const _startScanner = window.startScanner;
+      const _renderMonitor = window.renderMonitor;
+      const _buildPrintTicket = window.buildPrintTicket;
+      const _printTicket = window.printTicket;
+
+      // Override: MENU
+      window.renderMenu = async function(){
+        try{
+          await loadQueues();
+          const byGroup = {};
+          for(const q of queuesCache){ (byGroup[q.group_name] = byGroup[q.group_name]||[]).push(q); }
+          const root = document.getElementById('menu-root'); root.innerHTML='';
+          for(const group of Object.keys(byGroup)){
+            const gEl = document.createElement('div');
+            const title = document.createElement('div'); title.className='group-title'; title.textContent = group;
+            const grid = document.createElement('div'); grid.className='grid cols-3';
+            for(const q of byGroup[group]){
+              const item = document.createElement('div'); item.className='menu-item'; item.title = 'Criar ticket para ' + q.name;
+              const icon = document.createElement('div'); icon.className='menu-icon'; icon.innerHTML = '<span class="material-icons-outlined">confirmation_number</span>';
+              const txt = document.createElement('div'); txt.innerHTML = '<div style="font-weight:700;">' + q.name + '</div>' + '<div class="muted" style="font-size:12px;">Média: ' + Math.round((q.avg_service_sec||180)/60) + ' min</div>';
+              item.appendChild(icon); item.appendChild(txt);
+              item.addEventListener('click', async ()=>{
+                const person = prompt('Nome (opcional):');
+                const notes = prompt('Observações (opcional):');
+                try{
+                  const resp = await API.createTicket(q.id, person, notes);
+                  const t = resp.ticket; if(!t) throw new Error('Sem ticket');
+                  try{ sessionStorage.setItem('auto_print_ticket','1'); }catch(e){}
+                  try{ sessionStorage.setItem('last_ticket_id', t.ext_id); localStorage.setItem('last_ticket_id', t.ext_id); }catch(e){}
+                  location.hash = '#ticket/' + t.ext_id;
+                }catch(e){ alert('Falha ao criar ticket: ' + (e.message||e)); }
+              });
+              grid.appendChild(item);
+            }
+            gEl.appendChild(title); gEl.appendChild(grid); root.appendChild(gEl);
+          }
+        }catch(e){ console.warn('API renderMenu falhou, fallback local', e); return _renderMenu(); }
+      };
+
+      // Override: TICKET
+      window.renderTicket = async function(id){
+        id = id || (sessionStorage.getItem('last_ticket_id') || localStorage.getItem('last_ticket_id') || '');
+        const qrCanvas = document.getElementById('ticket-qr');
+        const elQueue = document.getElementById('ticket-queue-name');
+        const elNumber = document.getElementById('ticket-number');
+        const elPos = document.getElementById('ticket-position');
+        const elEta = document.getElementById('ticket-eta');
+        const elUpdates = document.getElementById('ticket-updates');
+
+        if(!id){ elQueue.textContent='—'; elNumber.textContent='—'; elPos.textContent='—'; elEta.textContent='—'; elUpdates.innerHTML='<div class="help">Nenhum ticket selecionado. Crie um no Início.</div>'; return; }
+        try{
+          const data = await API.getTicket(id);
+          const t = data.ticket, q = data.queue; if(!t||!q) throw new Error('Ticket não encontrado');
+          try{ sessionStorage.setItem('last_ticket_id', t.ext_id); localStorage.setItem('last_ticket_id', t.ext_id); }catch(e){}
+          // header
+          elQueue.textContent = q.name;
+          elNumber.textContent = labelForNumber(q.id, t.number);
+          // QR
+          const payload = JSON.stringify({ v:1, t: t.ext_id, q: q.id });
+          try{ await QRCode.toCanvas(qrCanvas, payload, { width: 220 }); }catch(e){ console.error(e); }
+          // stats
+          const pos = (t.status==='waiting') ? (data.position||0) : 0;
+          const eta = (t.status==='waiting') ? (data.eta_seconds||0) : 0;
+          elPos.textContent = t.status==='waiting' ? pos : (t.status==='serving'?'0 (em atendimento)':'—');
+          elEta.textContent = t.status==='waiting' ? formatDuration(eta) : (t.status==='serving'?'Agora':'Concluído');
+          // updates
+          elUpdates.innerHTML = '';
+          for(const u of (data.updates||[])){
+            const row = document.createElement('div'); row.className='row';
+            const left = document.createElement('div'); left.className='left';
+            left.innerHTML = '<span class="material-icons-outlined">history</span>' + '<div>' + new Date(u.ts).toLocaleString() + '</div>';
+            const st = document.createElement('div');
+            const badge = document.createElement('span'); badge.className='badge ' + (t.status==='waiting'?'wait':t.status==='serving'?'serving':t.status==='done'?'done':'cancel'); badge.textContent = t.status.toUpperCase(); st.appendChild(badge);
+            row.appendChild(left); row.appendChild(st); elUpdates.appendChild(row);
+          }
+          // actions
+          const btnShare = document.getElementById('btn-share-ticket');
+          if(btnShare){ btnShare.onclick = async ()=>{
+            const url = location.origin + location.pathname + '#ticket/' + t.ext_id;
+            try{ if(navigator.share){ await navigator.share({ title:'Ticket - ' + q.name, text:'Acompanhe o seu ticket', url }); } else { await navigator.clipboard.writeText(url); alert('Ligação copiada: ' + url); } }catch(e){}
+          } }
+          const btnPrint = document.getElementById('btn-print-ticket');
+          if(btnPrint){ btnPrint.onclick = ()=>{ printTicket(t.ext_id); }; }
+          const btnCancel = document.getElementById('btn-cancel-ticket');
+          if(btnCancel){ btnCancel.onclick = async ()=>{ if(confirm('Cancelar este ticket?')){ await API.updateStatus(t.ext_id, 'cancel'); renderTicket(t.ext_id); } }; }
+          try{ if(sessionStorage.getItem('auto_print_ticket')==='1'){ sessionStorage.removeItem('auto_print_ticket'); setTimeout(()=>printTicket(t.ext_id), 300); } }catch(e){}
+
+          // polling refresh
+          if(window.ticketTimer){ clearInterval(window.ticketTimer); }
+          window.ticketTimer = setInterval(()=>{ window.renderTicket(t.ext_id); }, 3000);
+        }catch(e){ console.warn('API renderTicket falhou, fallback local', e); return _renderTicket(id); }
+      };
+
+      // Override: PRINT
+      window.buildPrintTicket = async function(id){
+        try{
+          const data = await API.getTicket(id);
+          const t = data.ticket, q = data.queue; if(!t||!q) throw new Error('Ticket não encontrado');
+          const area = document.getElementById('print-area'); if(!area) return false;
+          const num = labelForNumber(q.id, t.number);
+          const when = new Date().toLocaleString();
+          const payload = JSON.stringify({ v:1, t: t.ext_id, q: q.id });
+          area.innerHTML = `
+            <div class="print-sheet">
+              <div class="print-center">
+                <div class="print-title">Pitágoras Namibe</div>
+                <div class="print-meta">Sistema de Gestão de Filas</div>
+                <div class="print-meta">${when}</div>
+                <div class="print-meta">${q.name}</div>
+                <div class="print-big">${num}</div>
+                <canvas id="print-qr" class="print-qr" width="160" height="160"></canvas>
+                <div class="print-meta">ID: ${t.ext_id}</div>
+              </div>
+            </div>`;
+          area.classList.remove('hidden');
+          try{ const canvas = document.getElementById('print-qr'); await QRCode.toCanvas(canvas, payload, { width: 160 }); }catch(e){}
+          return true;
+        }catch(e){ console.warn('API buildPrintTicket falhou, fallback local', e); return _buildPrintTicket(id); }
+      };
+      window.printTicket = async function(id){ try{ const ok = await window.buildPrintTicket(id); if(ok) window.print(); setTimeout(()=>{ const area=document.getElementById('print-area'); if(area){ area.classList.add('hidden'); area.innerHTML=''; } }, 500); }catch(e){ console.warn('print error', e); } };
+
+      // Override: ATENDIMENTO
+      window.initAtendimento = async function(){
+        try{
+          await loadQueues();
+          const sel = document.getElementById('sel-at-queue'); sel.innerHTML='';
+          for(const q of queuesCache){ const opt = document.createElement('option'); opt.value=q.id; opt.textContent=q.name; sel.appendChild(opt); }
+          sel.onchange = ()=> window.renderAtendimentoLists();
+          window.renderAtendimentoLists();
+          window.startScanner();
+          document.getElementById('btn-at-next').onclick = async ()=>{ const qid = sel.value; const r = await API.next(qid); window.renderAtendimentoLists(); announce(r.ticket||null); };
+          document.getElementById('btn-at-finish').onclick = async ()=>{ const cur = await API.current(sel.value); const t = cur.ticket; if(t){ await API.updateStatus(t.ext_id, 'done'); window.renderAtendimentoLists(); } };
+          document.getElementById('btn-at-cancel').onclick = async ()=>{ const cur = await API.current(sel.value); const t = cur.ticket; if(t){ if(confirm('Cancelar ticket atual?')){ await API.updateStatus(t.ext_id, 'cancel'); window.renderAtendimentoLists(); } } };
+          document.getElementById('btn-manual-load').onclick = async ()=>{ const extId = document.getElementById('inp-manual-id').value.trim(); if(!extId) return; try{ const d = await API.getTicket(extId); await API.updateStatus(d.ticket.ext_id, 'serving'); window.renderAtendimentoLists(); announce(d.ticket); }catch(e){ alert('Ticket não encontrado'); } };
+        }catch(e){ console.warn('API initAtendimento falhou, fallback local', e); return _initAtendimento(); }
+      };
+
+      window.renderAtendimentoLists = async function(){
+        const sel = document.getElementById('sel-at-queue'); const qid = sel.value; if(!qid) return;
+        try{
+          const cur = await API.current(qid);
+          const t = cur.ticket; document.getElementById('at-current').textContent = t ? labelForNumber(qid, t.number) : '—';
+          const list = document.getElementById('at-waiting'); list.innerHTML='';
+          const w = await API.waiting(qid, 15);
+          for(const it of (w.tickets||[])){
+            const row = document.createElement('div'); row.className='row';
+            const left = document.createElement('div'); left.className='left'; left.innerHTML = '<span class="material-icons-outlined">person</span><div>' + labelForNumber(qid, it.number) + '</div>';
+            const right = document.createElement('div'); const btn = document.createElement('button'); btn.className='action'; btn.innerHTML = '<span class="material-icons-outlined">call</span> Chamar';
+            btn.onclick = async ()=>{ await API.updateStatus(it.ext_id, 'serving'); window.renderAtendimentoLists(); announce(it); };
+            right.appendChild(btn); row.appendChild(left); row.appendChild(right); list.appendChild(row);
+          }
+        }catch(e){ console.warn('API renderAtendimentoLists falhou, fallback local', e); return _renderAtendimentoLists(); }
+      };
+
+      window.startScanner = function(){
+        try{
+          const scanner = new Html5QrcodeScanner('reader', { fps: 8, qrbox: {width: 220, height: 220}, rememberLastUsedCamera: true });
+          scanner.render(async (text)=>{
+            try{
+              let payload=null; try{ payload = JSON.parse(text); }catch(e){}
+              if(payload && payload.t){ const d = await API.getTicket(payload.t); if(d && d.ticket){ if(d.ticket.status==='waiting'){ await API.updateStatus(d.ticket.ext_id, 'serving'); } window.renderAtendimentoLists(); announce(d.ticket); } }
+            }catch(e){ console.warn('scan error', e); }
+          }, (err)=>{});
+        }catch(e){ console.warn('No camera context (likely file://). Use localhost/https.', e); }
+      };
+
+      // Override: MONITOR
+      window.renderMonitor = async function(){
+        try{
+          if(queuesCache.length===0) await loadQueues();
+          const sel = document.getElementById('sel-monitor-queue');
+          if(sel.options.length===0){ for(const q of queuesCache){ const opt = document.createElement('option'); opt.value=q.id; opt.textContent=q.name; sel.appendChild(opt); } }
+          const qid = sel.value || (queuesCache[0]?.id||''); if(!qid) return;
+          const nowEl = document.getElementById('monitor-now'); const nextEl = document.getElementById('monitor-next');
+          const data = await API.monitor(qid);
+          nowEl.textContent = data.now ? labelForNumber(qid, data.now.number) : '—';
+          const next = (data.next||[]).map(x=> labelForNumber(qid, x.number));
+          nextEl.textContent = next.length? next.join('  ·  ') : '—';
+          document.getElementById('btn-monitor-refresh').onclick = ()=> window.renderMonitor();
+        }catch(e){ console.warn('API renderMonitor falhou, fallback local', e); return _renderMonitor(); }
+      };
+
+      // trigger rerender now that API is active
+      try{ renderAll(); }catch(e){ route(); }
+    })();
+  </script>
+</body>
+</html>
